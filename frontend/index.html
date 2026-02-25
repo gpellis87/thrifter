@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thrifter — Smart Resale Research</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #242836;
+      --border: #2e3345; --text: #e4e6f0; --text-dim: #8b8fa3;
+      --accent: #6c5ce7; --accent-light: #a29bfe;
+      --green: #00b894; --green-dim: #00b89433;
+      --red: #e17055; --yellow: #fdcb6e; --blue: #74b9ff;
+      --radius: 12px;
+    }
+    body { font-family:'Inter',-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; line-height:1.5; }
+    .container { max-width:1200px; margin:0 auto; padding:0 24px; }
+    a { color: var(--accent-light); }
+
+    /* ── Header ── */
+    header { padding:16px 0; border-bottom:1px solid var(--border); }
+    .header-inner { display:flex; align-items:center; justify-content:space-between; }
+    .logo { font-size:1.4rem; font-weight:800; background:linear-gradient(135deg,var(--accent),var(--accent-light)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+
+    /* ── Top Nav ── */
+    .top-nav { display:flex; gap:4px; }
+    .top-nav button {
+      padding:8px 18px; border:1px solid var(--border); border-radius:999px;
+      background:transparent; color:var(--text-dim); font-size:0.85rem;
+      font-weight:500; cursor:pointer; transition:all .2s; font-family:inherit;
+    }
+    .top-nav button:hover { border-color:var(--accent); color:var(--text); }
+    .top-nav button.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+    /* ── Pages ── */
+    .page { display:none; }
+    .page.active { display:block; }
+
+    /* ── Search Page ── */
+    .hero { padding:40px 0 28px; text-align:center; }
+    .hero h1 { font-size:2.2rem; font-weight:800; letter-spacing:-1px; margin-bottom:10px; background:linear-gradient(135deg,#fff,var(--text-dim)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .hero p { color:var(--text-dim); font-size:1rem; max-width:480px; margin:0 auto 32px; }
+    .search-modes { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+    .mode-btn { padding:7px 18px; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--text-dim); font-size:0.85rem; font-weight:500; cursor:pointer; transition:all .2s; font-family:inherit; }
+    .mode-btn:hover { border-color:var(--accent); color:var(--text); }
+    .mode-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .search-area { max-width:640px; margin:0 auto; }
+    .text-form { display:flex; gap:10px; }
+    .text-form input,.barcode-form input { flex:1; padding:13px 18px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); color:var(--text); font-size:0.95rem; font-family:inherit; outline:none; transition:border-color .2s; }
+    .text-form input:focus,.barcode-form input:focus { border-color:var(--accent); }
+    .text-form input::placeholder,.barcode-form input::placeholder { color:var(--text-dim); }
+    .barcode-form { display:flex; gap:10px; }
+    .btn-primary { padding:13px 24px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius); font-size:0.95rem; font-weight:600; cursor:pointer; transition:all .2s; font-family:inherit; white-space:nowrap; }
+    .btn-primary:hover { background:#5b4bd6; transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+    .btn-sm { padding:8px 16px; font-size:0.8rem; border-radius:8px; }
+    .btn-secondary { padding:10px 18px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:var(--radius); font-size:0.85rem; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .btn-secondary:hover { border-color:var(--accent); }
+    .btn-danger { background:rgba(225,112,85,.15); color:var(--red); border-color:rgba(225,112,85,.3); }
+    .btn-danger:hover { border-color:var(--red); }
+
+    /* Upload */
+    .upload-zone { border:2px dashed var(--border); border-radius:var(--radius); padding:40px 24px; text-align:center; cursor:pointer; transition:all .2s; }
+    .upload-zone:hover,.upload-zone.dragover { border-color:var(--accent); background:rgba(108,92,231,.05); }
+    .upload-zone input { display:none; }
+    .upload-icon { font-size:2.2rem; margin-bottom:10px; opacity:.6; }
+    .upload-zone p { color:var(--text-dim); }
+    .upload-zone .hint { font-size:0.75rem; margin-top:6px; }
+    .preview-container { display:none; flex-direction:column; align-items:center; gap:14px; }
+    .preview-container img { max-height:180px; border-radius:var(--radius); border:1px solid var(--border); }
+    .preview-container .btn-row { display:flex; gap:10px; }
+    .hidden { display:none !important; }
+
+    /* Loading */
+    .loading-overlay { display:none; flex-direction:column; align-items:center; justify-content:center; padding:60px 0; }
+    .loading-overlay.visible { display:flex; }
+    .spinner { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .loading-overlay p { margin-top:14px; color:var(--text-dim); font-size:0.9rem; }
+
+    /* ── Deal Score Badge ── */
+    .deal-verdict {
+      display:inline-flex; align-items:center; gap:10px;
+      padding:14px 24px; border-radius:var(--radius); font-weight:700;
+      font-size:1.3rem; letter-spacing:-.5px; margin-bottom:20px;
+    }
+    .deal-verdict .score-num { font-size:2rem; font-weight:800; }
+    .deal-verdict.green { background:rgba(0,184,148,.12); color:var(--green); border:1px solid rgba(0,184,148,.3); }
+    .deal-verdict.blue { background:rgba(116,185,255,.12); color:var(--blue); border:1px solid rgba(116,185,255,.3); }
+    .deal-verdict.yellow { background:rgba(253,203,110,.12); color:var(--yellow); border:1px solid rgba(253,203,110,.3); }
+    .deal-verdict.red { background:rgba(225,112,85,.12); color:var(--red); border:1px solid rgba(225,112,85,.3); }
+    .deal-verdict.gray { background:var(--surface2); color:var(--text-dim); border:1px solid var(--border); }
+    .deal-summary { font-size:0.85rem; font-weight:400; opacity:.85; }
+
+    /* Score breakdown bar */
+    .score-bars { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:24px; }
+    .score-bar-item { text-align:center; }
+    .score-bar-item .bar-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); margin-bottom:4px; }
+    .score-bar-track { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+    .score-bar-fill { height:100%; border-radius:3px; transition:width .5s; }
+    .score-bar-item .bar-val { font-size:0.75rem; font-weight:600; margin-top:2px; }
+
+    /* Sell-through section */
+    .sell-through-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:24px; }
+    .st-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; text-align:center; }
+    .st-card .st-val { font-size:1.4rem; font-weight:800; letter-spacing:-.5px; }
+    .st-card .st-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); margin-top:4px; }
+    .liquidity-hot { color:var(--green); }
+    .liquidity-steady { color:var(--blue); }
+    .liquidity-slow { color:var(--yellow); }
+    .liquidity-dead { color:var(--red); }
+    .liquidity-unknown { color:var(--text-dim); }
+
+    /* Results */
+    .results { display:none; padding-bottom:60px; }
+    .results.visible { display:block; }
+    .results-header { display:flex; align-items:center; justify-content:space-between; padding:20px 0 14px; border-bottom:1px solid var(--border); margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+    .results-header h2 { font-size:1.2rem; font-weight:700; }
+    .results-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .item-badge { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; background:var(--surface2); border-radius:999px; font-size:0.75rem; color:var(--text-dim); }
+
+    /* Pricing cards */
+    .pricing-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:24px; }
+    .price-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+    .price-card .label { font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); margin-bottom:6px; }
+    .price-card .value { font-size:1.6rem; font-weight:800; letter-spacing:-1px; }
+    .price-card .sub { font-size:0.75rem; color:var(--text-dim); margin-top:3px; }
+    .price-card.highlight { border-color:var(--green); background:linear-gradient(135deg,var(--surface),rgba(0,184,148,.08)); }
+    .price-card.highlight .value { color:var(--green); }
+
+    .confidence-badge { display:inline-flex; padding:2px 8px; border-radius:999px; font-size:0.7rem; font-weight:600; }
+    .confidence-high { background:var(--green-dim); color:var(--green); }
+    .confidence-medium { background:rgba(253,203,110,.2); color:var(--yellow); }
+    .confidence-low { background:rgba(225,112,85,.2); color:var(--red); }
+
+    .warning-banner { display:flex; align-items:flex-start; gap:8px; background:rgba(253,203,110,.08); border:1px solid rgba(253,203,110,.3); border-radius:var(--radius); padding:10px 14px; margin-bottom:16px; font-size:0.8rem; color:var(--yellow); }
+
+    /* Platform tabs for listings */
+    .platform-tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+    .platform-tab { padding:6px 14px; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--text-dim); font-size:0.8rem; font-weight:500; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .platform-tab:hover { border-color:var(--accent); }
+    .platform-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .platform-panel { display:none; }
+    .platform-panel.active { display:block; }
+
+    /* Listings */
+    .listings-section { margin-bottom:28px; }
+    .listings-section h3 { font-size:1rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+    .count-badge { background:var(--surface2); padding:2px 8px; border-radius:999px; font-size:0.7rem; font-weight:600; color:var(--text-dim); }
+    .listings-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+    .listing-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; transition:all .2s; text-decoration:none; color:inherit; display:block; }
+    .listing-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+    .listing-card img { width:100%; height:160px; object-fit:cover; background:var(--surface2); }
+    .listing-card .info { padding:12px; }
+    .listing-card .title { font-size:0.8rem; font-weight:500; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:6px; line-height:1.4; }
+    .listing-card .price-row { display:flex; align-items:center; justify-content:space-between; }
+    .listing-card .price { font-size:1rem; font-weight:700; color:var(--accent-light); }
+    .listing-card .source-badge { font-size:0.65rem; padding:2px 7px; border-radius:999px; background:var(--surface2); color:var(--text-dim); text-transform:uppercase; font-weight:600; }
+    .listing-card .condition-text { font-size:0.7rem; color:var(--text-dim); margin-top:3px; }
+    .sold-tag { background:rgba(0,184,148,.15); color:var(--green); }
+    .posh-tag { background:rgba(108,92,231,.15); color:var(--accent-light); }
+    .merc-tag { background:rgba(116,185,255,.15); color:var(--blue); }
+    .no-data { grid-column:1/-1; text-align:center; padding:28px; color:var(--text-dim); font-size:0.85rem; }
+
+    /* Assumptions */
+    .assumptions { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-top:8px; margin-bottom:24px; }
+    .assumptions summary { cursor:pointer; font-size:0.8rem; color:var(--text-dim); font-weight:500; }
+    .assumptions .details-body { margin-top:10px; font-size:0.75rem; color:var(--text-dim); line-height:1.8; }
+
+    /* ── Listing Generator Modal ── */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1000; align-items:center; justify-content:center; padding:24px; }
+    .modal-overlay.visible { display:flex; }
+    .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; max-width:720px; width:100%; max-height:85vh; overflow-y:auto; padding:28px; }
+    .modal h2 { font-size:1.2rem; font-weight:700; margin-bottom:16px; }
+    .modal-close { float:right; background:none; border:none; color:var(--text-dim); font-size:1.3rem; cursor:pointer; }
+    .listing-field { margin-bottom:14px; }
+    .listing-field label { display:block; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); margin-bottom:4px; }
+    .listing-field input,.listing-field textarea,.listing-field select {
+      width:100%; padding:10px 14px; background:var(--bg); border:1px solid var(--border);
+      border-radius:8px; color:var(--text); font-family:inherit; font-size:0.9rem; outline:none;
+    }
+    .listing-field textarea { min-height:120px; resize:vertical; }
+    .listing-field input:focus,.listing-field textarea:focus { border-color:var(--accent); }
+    .listing-keywords { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+    .keyword-tag { padding:3px 10px; background:var(--surface2); border-radius:999px; font-size:0.75rem; color:var(--text-dim); }
+    .copy-btn { padding:6px 14px; background:var(--accent); color:#fff; border:none; border-radius:8px; font-size:0.8rem; cursor:pointer; font-family:inherit; }
+    .copy-btn:hover { background:#5b4bd6; }
+
+    /* ── Inventory Page ── */
+    .inv-header { display:flex; align-items:center; justify-content:space-between; padding:24px 0 16px; flex-wrap:wrap; gap:12px; }
+    .inv-header h1 { font-size:1.5rem; font-weight:800; }
+    .dashboard-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:24px; }
+    .dash-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; text-align:center; }
+    .dash-card .d-val { font-size:1.5rem; font-weight:800; }
+    .dash-card .d-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); margin-top:3px; }
+    .dash-card.profit-pos .d-val { color:var(--green); }
+    .dash-card.profit-neg .d-val { color:var(--red); }
+
+    .inv-filters { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+    .inv-filter { padding:6px 14px; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--text-dim); font-size:0.8rem; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .inv-filter:hover { border-color:var(--accent); }
+    .inv-filter.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+    .inv-table { width:100%; border-collapse:collapse; }
+    .inv-table th { text-align:left; padding:10px 12px; font-size:0.7rem; text-transform:uppercase; letter-spacing:.5px; color:var(--text-dim); border-bottom:1px solid var(--border); }
+    .inv-table td { padding:10px 12px; font-size:0.85rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+    .inv-table tr:hover { background:var(--surface); }
+    .inv-table .status-badge { padding:2px 8px; border-radius:999px; font-size:0.7rem; font-weight:600; }
+    .status-unlisted { background:var(--surface2); color:var(--text-dim); }
+    .status-listed { background:rgba(116,185,255,.15); color:var(--blue); }
+    .status-sold { background:var(--green-dim); color:var(--green); }
+    .inv-empty { text-align:center; padding:48px; color:var(--text-dim); }
+
+    /* Add item form */
+    .add-form-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1000; align-items:center; justify-content:center; padding:24px; }
+    .add-form-overlay.visible { display:flex; }
+    .add-form { background:var(--surface); border:1px solid var(--border); border-radius:16px; max-width:540px; width:100%; max-height:85vh; overflow-y:auto; padding:28px; }
+    .add-form h2 { font-size:1.1rem; font-weight:700; margin-bottom:16px; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .form-grid .full-width { grid-column:1/-1; }
+
+    /* ── Deals Page ── */
+    .scanner-bar {
+      display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+      padding:14px 20px; margin-bottom:20px;
+    }
+    .scanner-status { display:flex; align-items:center; gap:8px; }
+    .scanner-dot { width:10px; height:10px; border-radius:50%; }
+    .scanner-dot.on { background:var(--green); box-shadow:0 0 8px var(--green); }
+    .scanner-dot.off { background:var(--red); }
+    .scanner-controls { display:flex; gap:8px; }
+
+    .watch-section { margin-bottom:28px; }
+    .watch-section h3 { font-size:1rem; font-weight:700; margin-bottom:12px; }
+    .watch-add-row { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+    .watch-add-row input { flex:1; min-width:160px; padding:10px 14px; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:inherit; font-size:0.85rem; outline:none; }
+    .watch-add-row input:focus { border-color:var(--accent); }
+    .watch-list { display:flex; flex-direction:column; gap:8px; }
+    .watch-item {
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px;
+    }
+    .watch-item .wi-query { font-weight:600; font-size:0.9rem; }
+    .watch-item .wi-meta { font-size:0.75rem; color:var(--text-dim); }
+    .watch-item .wi-actions { display:flex; gap:6px; align-items:center; }
+    .watch-toggle { width:36px; height:20px; border-radius:10px; border:none; cursor:pointer; position:relative; transition:background .2s; }
+    .watch-toggle.on { background:var(--green); }
+    .watch-toggle.off { background:var(--surface2); }
+    .watch-toggle::after { content:''; position:absolute; width:16px; height:16px; border-radius:50%; background:#fff; top:2px; transition:left .2s; }
+    .watch-toggle.on::after { left:18px; }
+    .watch-toggle.off::after { left:2px; }
+
+    .opp-feed { display:flex; flex-direction:column; gap:12px; }
+    .opp-card {
+      display:flex; gap:14px; background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); padding:14px; transition:border-color .2s;
+    }
+    .opp-card:hover { border-color:var(--accent); }
+    .opp-card img { width:100px; height:100px; object-fit:cover; border-radius:8px; background:var(--surface2); flex-shrink:0; }
+    .opp-card .opp-info { flex:1; min-width:0; }
+    .opp-card .opp-title { font-weight:600; font-size:0.85rem; margin-bottom:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .opp-card .opp-prices { display:flex; gap:16px; margin:6px 0; font-size:0.85rem; }
+    .opp-card .opp-prices .op-label { color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; }
+    .opp-card .opp-prices .op-val { font-weight:700; }
+    .opp-card .opp-verdict-sm {
+      display:inline-flex; padding:2px 10px; border-radius:999px; font-size:0.7rem;
+      font-weight:700; letter-spacing:.5px;
+    }
+    .verdict-hot { background:rgba(0,184,148,.15); color:var(--green); }
+    .verdict-good { background:rgba(116,185,255,.15); color:var(--blue); }
+    .verdict-okay { background:rgba(253,203,110,.15); color:var(--yellow); }
+    .verdict-pass { background:rgba(225,112,85,.15); color:var(--red); }
+    .opp-card .opp-actions { display:flex; gap:6px; margin-top:8px; }
+    .opp-card .opp-time { font-size:0.7rem; color:var(--text-dim); margin-top:4px; }
+    .opp-empty { text-align:center; padding:48px; color:var(--text-dim); }
+
+    /* Purchase modal */
+    .purchase-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1000; align-items:center; justify-content:center; padding:24px; }
+    .purchase-overlay.visible { display:flex; }
+    .purchase-modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; max-width:480px; width:100%; padding:28px; }
+    .purchase-modal h2 { font-size:1.1rem; font-weight:700; margin-bottom:16px; }
+
+    /* Settings page */
+    .settings-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
+    .settings-card h3 { font-size:1rem; font-weight:700; margin-bottom:4px; }
+    .settings-desc { font-size:0.85rem; color:var(--text-dim); margin-bottom:14px; line-height:1.5; }
+    .settings-desc code { background:var(--bg); padding:2px 6px; border-radius:4px; font-size:0.82rem; }
+    .settings-toggle-group { display:flex; gap:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; width:fit-content; }
+    .stoggle { padding:8px 18px; background:var(--bg); border:none; color:var(--text-dim); cursor:pointer; font-size:0.85rem; font-family:inherit; transition:all .15s; }
+    .stoggle.active { background:var(--accent); color:#fff; font-weight:600; }
+    .stoggle:hover:not(.active) { background:var(--border); }
+    .settings-hint { font-size:0.82rem; color:var(--text-dim); margin-top:8px; }
+    .settings-status-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .api-status-item { display:flex; align-items:center; gap:8px; font-size:0.88rem; padding:8px 12px; background:var(--bg); border-radius:8px; }
+    .api-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .api-dot.on { background:var(--green); }
+    .api-dot.off { background:var(--red); }
+    .source-indicator { font-size:0.72rem; padding:2px 8px; border-radius:4px; font-weight:600; text-transform:uppercase; }
+    .source-indicator.scrape { background:#e3f2fd; color:#1565c0; }
+    .source-indicator.api { background:#e8f5e9; color:#2e7d32; }
+    .fb-tag { background:#1877f2; color:#fff; }
+
+    @media(max-width:640px) {
+      .hero h1 { font-size:1.6rem; }
+      .text-form,.barcode-form { flex-direction:column; }
+      .pricing-grid { grid-template-columns:1fr 1fr; }
+      .listings-grid { grid-template-columns:1fr; }
+      .score-bars { grid-template-columns:1fr 1fr; }
+      .form-grid { grid-template-columns:1fr; }
+      .inv-table { font-size:0.75rem; }
+      .settings-status-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container header-inner">
+    <div class="logo">THRIFTER</div>
+    <div class="top-nav">
+      <button class="active" onclick="showPage('search')">Search</button>
+      <button onclick="showPage('deals')">Deals</button>
+      <button onclick="showPage('inventory')">Inventory</button>
+      <button onclick="showPage('settings')">Settings</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── Setup Status Banner ── -->
+<div id="setupBanner" class="container" style="display:none;">
+  <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:16px 20px;margin-top:16px;display:flex;align-items:flex-start;gap:12px;">
+    <span style="font-size:1.5rem;">&#9888;&#65039;</span>
+    <div>
+      <strong style="color:#856404;">Setup Required</strong>
+      <div id="setupDetails" style="color:#856404;margin-top:4px;font-size:0.9rem;line-height:1.6;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ SEARCH PAGE ════════════════ -->
+<div class="page active" id="page-search">
+<section class="hero">
+  <div class="container">
+    <h1>Find what it's worth.</h1>
+    <p>Snap a photo, type a description, or scan a barcode to get instant market intel.</p>
+
+    <div class="search-modes">
+      <button class="mode-btn active" data-mode="text" onclick="switchMode('text')">Text Search</button>
+      <button class="mode-btn" data-mode="photo" onclick="switchMode('photo')">Photo Lookup</button>
+      <button class="mode-btn" data-mode="barcode" onclick="switchMode('barcode')">Barcode Scan</button>
+    </div>
+
+    <div class="search-area">
+      <form class="text-form" id="textForm" onsubmit="searchByText(event)">
+        <input type="text" id="textInput" placeholder='e.g. "Vintage Levi 501 jeans" or "KitchenAid mixer blue"' autocomplete="off">
+        <button type="submit" class="btn-primary">Search</button>
+      </form>
+
+      <div class="hidden" id="photoForm">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="handleFile(this.files[0])">
+          <div class="upload-icon">&#128247;</div>
+          <p>Drop a photo here or tap to upload</p>
+          <p class="hint">JPG, PNG, WebP &mdash; max 10MB</p>
+        </div>
+        <div class="preview-container" id="previewContainer">
+          <img id="previewImg" alt="Preview">
+          <div class="btn-row">
+            <button class="btn-primary" onclick="searchByImage()">Analyze &amp; Search</button>
+            <button class="btn-secondary" onclick="clearPhoto()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hidden" id="barcodeForm">
+        <form class="barcode-form" onsubmit="searchByBarcode(event)">
+          <input type="text" id="barcodeInput" placeholder="Enter UPC / EAN barcode number" autocomplete="off" inputmode="numeric">
+          <button type="submit" class="btn-primary">Lookup</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container">
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">Analyzing item...</p>
+  </div>
+
+  <div class="results" id="results">
+    <!-- Deal Score -->
+    <div id="dealVerdict"></div>
+
+    <!-- Score Breakdown -->
+    <div class="score-bars" id="scoreBars"></div>
+
+    <div class="results-header">
+      <div>
+        <h2 id="resultsTitle">Results</h2>
+        <span class="item-badge" id="categoryBadge"></span>
+      </div>
+      <div class="results-actions">
+        <button class="btn-primary btn-sm" onclick="generateListing()">Generate Listing</button>
+        <button class="btn-secondary btn-sm" onclick="addToInventory()">+ Add to Inventory</button>
+      </div>
+    </div>
+
+    <!-- Sell-through -->
+    <div class="sell-through-grid" id="sellThroughGrid"></div>
+
+    <!-- Pricing -->
+    <div class="pricing-grid" id="pricingGrid"></div>
+
+    <div id="warningBanner" class="warning-banner hidden"></div>
+
+    <details class="assumptions" id="assumptions">
+      <summary>How this is calculated</summary>
+      <div class="details-body" id="assumptionsBody"></div>
+    </details>
+
+    <!-- Multi-platform listings -->
+    <div class="platform-tabs" id="platformTabs"></div>
+    <div id="platformPanels"></div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════ INVENTORY PAGE ════════════════ -->
+<div class="page" id="page-inventory">
+<div class="container">
+  <div class="inv-header">
+    <h1>Inventory</h1>
+    <button class="btn-primary btn-sm" onclick="showAddForm()">+ Add Item</button>
+  </div>
+  <div class="dashboard-grid" id="dashboardGrid"></div>
+  <div class="inv-filters" id="invFilters">
+    <button class="inv-filter active" data-status="" onclick="filterInventory(this,'')">All</button>
+    <button class="inv-filter" data-status="unlisted" onclick="filterInventory(this,'unlisted')">Unlisted</button>
+    <button class="inv-filter" data-status="listed" onclick="filterInventory(this,'listed')">Listed</button>
+    <button class="inv-filter" data-status="sold" onclick="filterInventory(this,'sold')">Sold</button>
+  </div>
+  <div id="invTableWrap"></div>
+</div>
+</div>
+
+<!-- ════════════════ DEALS PAGE ════════════════ -->
+<div class="page" id="page-deals">
+<div class="container">
+  <div class="inv-header">
+    <h1>Deal Scanner</h1>
+  </div>
+
+  <!-- Scanner Status -->
+  <div class="scanner-bar" id="scannerBar">
+    <div class="scanner-status">
+      <div class="scanner-dot off" id="scannerDot"></div>
+      <span id="scannerLabel">Scanner stopped</span>
+      <span style="color:var(--text-dim);font-size:0.8rem" id="scannerMeta"></span>
+    </div>
+    <div class="scanner-controls">
+      <button class="btn-primary btn-sm" id="scanToggleBtn" onclick="toggleScanner()">Start</button>
+      <button class="btn-secondary btn-sm" onclick="scanNow()">Scan Now</button>
+    </div>
+  </div>
+
+  <!-- Watch Queries -->
+  <div class="watch-section">
+    <h3>Watch Queries</h3>
+    <div class="watch-add-row">
+      <input id="watchQueryInput" placeholder='e.g. "vintage pyrex" or "Nintendo 64 console"'>
+      <input id="watchMaxPrice" type="number" step="0.01" placeholder="Max buy $" style="max-width:120px">
+      <input id="watchMinProfit" type="number" step="0.01" placeholder="Min profit $" style="max-width:120px" value="5">
+      <button class="btn-primary btn-sm" onclick="addWatch()">+ Add</button>
+    </div>
+    <div class="watch-list" id="watchList"></div>
+  </div>
+
+  <!-- Opportunity Feed -->
+  <div class="listings-section">
+    <h3>Opportunities <span class="count-badge" id="oppCount">0</span></h3>
+    <div class="inv-filters" style="margin-bottom:14px">
+      <button class="inv-filter active" onclick="filterOpps(this,'')">Active</button>
+      <button class="inv-filter" onclick="filterOpps(this,'purchased')">Purchased</button>
+      <button class="inv-filter" onclick="filterOpps(this,'dismissed')">Dismissed</button>
+    </div>
+    <div class="opp-feed" id="oppFeed"></div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════ PURCHASE MODAL ════════════════ -->
+<div class="purchase-overlay" id="purchaseModal">
+  <div class="purchase-modal">
+    <button class="modal-close" onclick="closePurchaseModal()">&times;</button>
+    <h2>Confirm Purchase</h2>
+    <p id="purchaseItemTitle" style="margin-bottom:14px;color:var(--text-dim);font-size:0.9rem"></p>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+      <div class="listing-field">
+        <label>Purchase Price ($)</label>
+        <input type="number" step="0.01" id="purchasePrice">
+      </div>
+      <div class="listing-field">
+        <label>Source</label>
+        <input id="purchaseSource" value="eBay Flip">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn-primary" onclick="confirmPurchase()">Buy &amp; Auto-Relist</button>
+      <button class="btn-secondary" onclick="closePurchaseModal()">Cancel</button>
+    </div>
+    <div id="purchaseResult" style="margin-top:16px"></div>
+  </div>
+</div>
+
+<!-- ════════════════ LISTING GENERATOR MODAL ════════════════ -->
+<div class="modal-overlay" id="listingModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeListingModal()">&times;</button>
+    <h2>Generated Listing</h2>
+    <div id="listingContent"><p style="color:var(--text-dim)">Generating...</p></div>
+  </div>
+</div>
+
+<!-- ════════════════ ADD INVENTORY MODAL ════════════════ -->
+<div class="add-form-overlay" id="addItemModal">
+  <div class="add-form">
+    <button class="modal-close" onclick="closeAddForm()">&times;</button>
+    <h2 id="addFormTitle">Add to Inventory</h2>
+    <form onsubmit="saveInventoryItem(event)" id="invForm">
+      <input type="hidden" id="editItemId">
+      <div class="form-grid">
+        <div class="listing-field full-width"><label>Title</label><input id="inv-title" required></div>
+        <div class="listing-field"><label>Brand</label><input id="inv-brand"></div>
+        <div class="listing-field"><label>Category</label><input id="inv-category"></div>
+        <div class="listing-field"><label>Purchase Price ($)</label><input type="number" step="0.01" id="inv-price"></div>
+        <div class="listing-field"><label>Purchase Date</label><input type="date" id="inv-date"></div>
+        <div class="listing-field"><label>Purchase Location</label><input id="inv-location" placeholder="e.g. Goodwill, Estate Sale"></div>
+        <div class="listing-field"><label>Storage Location</label><input id="inv-storage" placeholder="e.g. Bin A, Shelf 3"></div>
+        <div class="listing-field"><label>Status</label>
+          <select id="inv-status" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;">
+            <option value="unlisted">Unlisted</option>
+            <option value="listed">Listed</option>
+            <option value="sold">Sold</option>
+          </select>
+        </div>
+        <div class="listing-field"><label>Listed Price ($)</label><input type="number" step="0.01" id="inv-listed-price"></div>
+        <div class="listing-field"><label>Listed Platform</label><input id="inv-listed-platform" placeholder="e.g. eBay, Poshmark"></div>
+        <div class="listing-field"><label>Sold Price ($)</label><input type="number" step="0.01" id="inv-sold-price"></div>
+        <div class="listing-field"><label>Shipping Cost ($)</label><input type="number" step="0.01" id="inv-shipping"></div>
+        <div class="listing-field"><label>Platform Fees ($)</label><input type="number" step="0.01" id="inv-fees"></div>
+        <div class="listing-field full-width"><label>Notes</label><input id="inv-notes"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button type="submit" class="btn-primary">Save</button>
+        <button type="button" class="btn-secondary" onclick="closeAddForm()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ════════════════ SETTINGS PAGE ════════════════ -->
+<div class="page" id="page-settings">
+<div class="container" style="padding-top:24px; max-width:700px; margin:0 auto;">
+  <h2 style="margin-bottom:20px;">Settings</h2>
+
+  <!-- eBay Data Source -->
+  <div class="settings-card">
+    <h3>eBay Data Source</h3>
+    <p class="settings-desc">Choose how Thrifter fetches eBay data. <strong>Auto</strong> uses the API when keys are set, otherwise scrapes eBay directly.</p>
+    <div class="settings-toggle-group" id="ebayModeGroup">
+      <button class="stoggle active" data-val="auto" onclick="setEbayMode('auto')">Auto</button>
+      <button class="stoggle" data-val="api" onclick="setEbayMode('api')">API Only</button>
+      <button class="stoggle" data-val="scrape" onclick="setEbayMode('scrape')">Scrape Only</button>
+    </div>
+    <div id="ebayModeHint" class="settings-hint"></div>
+  </div>
+
+  <!-- Facebook Marketplace -->
+  <div class="settings-card">
+    <h3>Facebook Marketplace</h3>
+    <p class="settings-desc">Scrapes FB Marketplace listings using Playwright browser automation. Requires a one-time Facebook login.</p>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+      <span id="fbStatusDot" class="scanner-dot off"></span>
+      <span id="fbStatusLabel" style="font-size:0.95rem;">Not connected</span>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn-primary btn-sm" id="fbConnectBtn" onclick="fbConnect()">Connect Facebook</button>
+      <button class="btn-secondary btn-sm" id="fbDisconnectBtn" onclick="fbDisconnect()" style="display:none">Disconnect</button>
+    </div>
+    <div id="fbHint" class="settings-hint" style="margin-top:8px;"></div>
+  </div>
+
+  <!-- API Keys Status -->
+  <div class="settings-card">
+    <h3>API Keys</h3>
+    <p class="settings-desc">Status of external API integrations. Configure these in your <code>.env</code> file.</p>
+    <div class="settings-status-grid" id="apiKeysGrid"></div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── State ──
+let selectedFile = null;
+let lastSearchData = null;
+let currentInvFilter = '';
+let apiStatus = {};
+
+(async function checkSetup() {
+  try {
+    const r = await fetch('/api/status');
+    apiStatus = await r.json();
+    const issues = [];
+    if (!apiStatus.network_ok) {
+      issues.push('Cannot reach eBay — the server has no internet access. <strong>Start the server from a regular Terminal</strong> (not Cursor\'s terminal). See <a href="#" onclick="showPage(\'settings\');return false;">Settings</a> for details.');
+    }
+    const ebayMode = apiStatus.settings?.ebay_mode || 'auto';
+    if (apiStatus.network_ok && !apiStatus.ebay_configured && ebayMode === 'api') {
+      issues.push('eBay API keys not set and mode is "API Only" — switch to Auto or Scrape in <a href="#" onclick="showPage(\'settings\');return false;">Settings</a>');
+    }
+    if (!apiStatus.openai_configured) issues.push('OpenAI API key not set — photo analysis and AI listing generation will not work. <a href="https://platform.openai.com/api-keys" target="_blank">Get OpenAI key</a>');
+    if (issues.length) {
+      document.getElementById('setupDetails').innerHTML = issues.map(i => '• ' + i).join('<br>');
+      document.getElementById('setupBanner').style.display = 'block';
+    }
+  } catch(e) {}
+})();
+
+function switchMode(mode) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+  document.getElementById('textForm').classList.toggle('hidden', mode !== 'text');
+  document.getElementById('photoForm').classList.toggle('hidden', mode !== 'photo');
+  document.getElementById('barcodeForm').classList.toggle('hidden', mode !== 'barcode');
+}
+
+// ── Upload ──
+const uploadZone = document.getElementById('uploadZone');
+['dragenter','dragover'].forEach(e => uploadZone.addEventListener(e, ev => { ev.preventDefault(); uploadZone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(e => uploadZone.addEventListener(e, ev => { ev.preventDefault(); uploadZone.classList.remove('dragover'); }));
+uploadZone.addEventListener('drop', ev => { if(ev.dataTransfer.files.length) handleFile(ev.dataTransfer.files[0]); });
+
+function handleFile(file) {
+  if(!file||!file.type.startsWith('image/')) return;
+  selectedFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('previewImg').src = e.target.result;
+    uploadZone.style.display = 'none';
+    document.getElementById('previewContainer').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+function clearPhoto() {
+  selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  uploadZone.style.display = '';
+  document.getElementById('previewContainer').style.display = 'none';
+}
+
+// ── Search ──
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loading').classList.add('visible');
+  document.getElementById('results').classList.remove('visible');
+}
+function hideLoading() { document.getElementById('loading').classList.remove('visible'); }
+
+async function searchByText(e) {
+  e.preventDefault();
+  const q = document.getElementById('textInput').value.trim();
+  if(!q) return;
+  showLoading('Searching marketplaces...');
+  try {
+    const fd = new FormData(); fd.append('query', q);
+    const r = await fetch('/api/search/text',{method:'POST',body:fd});
+    if(!r.ok) throw new Error((await r.json()).detail||'Search failed');
+    renderResults(await r.json());
+  } catch(err) { hideLoading(); alert('Error: '+err.message); }
+}
+
+async function searchByImage() {
+  if(!selectedFile) return;
+  showLoading('Identifying item...');
+  try {
+    const fd = new FormData(); fd.append('file', selectedFile);
+    const r = await fetch('/api/search/image',{method:'POST',body:fd});
+    if(!r.ok) throw new Error((await r.json()).detail||'Analysis failed');
+    renderResults(await r.json());
+  } catch(err) { hideLoading(); alert('Error: '+err.message); }
+}
+
+async function searchByBarcode(e) {
+  e.preventDefault();
+  const upc = document.getElementById('barcodeInput').value.trim();
+  if(!upc) return;
+  showLoading('Looking up barcode...');
+  try {
+    const fd = new FormData(); fd.append('upc', upc);
+    const r = await fetch('/api/search/barcode',{method:'POST',body:fd});
+    if(!r.ok) throw new Error((await r.json()).detail||'Lookup failed');
+    renderResults(await r.json());
+  } catch(err) { hideLoading(); alert('Error: '+err.message); }
+}
+
+function fmt(v) { return v==null?'—':'$'+Number(v).toFixed(2); }
+function escHtml(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+function renderResults(data) {
+  hideLoading();
+  lastSearchData = data;
+  const {identification:id, pricing:p, listings:l} = data;
+
+  // Deal score verdict
+  const ds = p.deal_score||{};
+  const dv = document.getElementById('dealVerdict');
+  if(ds.verdict) {
+    dv.innerHTML = `<div class="deal-verdict ${ds.color}">
+      <span class="score-num">${ds.score}</span>
+      <div><div>${ds.verdict}</div><div class="deal-summary">${ds.summary}</div></div>
+    </div>`;
+  } else { dv.innerHTML = ''; }
+
+  // Score breakdown bars
+  const sb = document.getElementById('scoreBars');
+  if(ds.breakdown) {
+    const b = ds.breakdown;
+    sb.innerHTML = ['profit','demand','confidence','risk'].map(k => {
+      const v = b[k]||0;
+      const c = v>=70?'var(--green)':v>=40?'var(--yellow)':'var(--red)';
+      return `<div class="score-bar-item">
+        <div class="bar-label">${k}</div>
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:${v}%;background:${c}"></div></div>
+        <div class="bar-val">${v}/100</div>
+      </div>`;
+    }).join('');
+  } else { sb.innerHTML = ''; }
+
+  // Title + source indicator
+  document.getElementById('resultsTitle').textContent = id.title||data.search_query;
+  const cat=id.category||'', brand=id.brand||'';
+  const srcMode = data.ebay_source_mode || '';
+  const srcBadge = srcMode === 'scrape' ? ' <span class="source-indicator scrape">SCRAPED</span>' :
+                   srcMode === 'api' ? ' <span class="source-indicator api">API</span>' : '';
+  document.getElementById('categoryBadge').innerHTML = escHtml([brand,cat].filter(Boolean).join(' · ')||'Item') + srcBadge;
+
+  // Sell-through
+  const st = p.sell_through||{};
+  const stg = document.getElementById('sellThroughGrid');
+  stg.innerHTML = `
+    <div class="st-card"><div class="st-val liquidity-${st.liquidity||'unknown'}">${(st.liquidity||'?').toUpperCase()}</div><div class="st-label">Liquidity</div></div>
+    <div class="st-card"><div class="st-val">${st.sell_through_pct!=null?st.sell_through_pct+'%':'—'}</div><div class="st-label">Sell-Through Rate</div></div>
+    <div class="st-card"><div class="st-val">${st.avg_days_to_sell!=null?st.avg_days_to_sell+'d':'—'}</div><div class="st-label">Avg Days to Sell</div></div>
+    <div class="st-card"><div class="st-val">${st.total_sold_recently||'—'}</div><div class="st-label">Recently Sold</div></div>
+    <div class="st-card"><div class="st-val">${st.total_active_supply||'—'}</div><div class="st-label">Active Supply</div></div>
+  `;
+
+  // Pricing cards
+  const rec = p.recommendation||{};
+  document.getElementById('pricingGrid').innerHTML = `
+    <div class="price-card highlight"><div class="label">Buy At / Under</div><div class="value">${fmt(rec.max_buy_price)}</div><div class="sub">Target ${rec.assumptions?.target_roi_pct||40}% ROI</div></div>
+    <div class="price-card"><div class="label">Avg Sold Price</div><div class="value">${fmt(p.sold_price?.average)}</div><div class="sub">Median ${fmt(p.sold_price?.median)} · ${p.sold_listings_count} sold</div></div>
+    <div class="price-card"><div class="label">Avg Asking Price</div><div class="value">${fmt(p.asking_price?.average)}</div><div class="sub">Median ${fmt(p.asking_price?.median)} · ${p.active_listings_count} listed</div></div>
+    <div class="price-card"><div class="label">Est. Profit</div><div class="value" style="color:var(--green)">${fmt(rec.estimated_profit)}</div>
+      <div class="sub">ROI ${rec.roi_percent!=null?rec.roi_percent+'%':'—'} <span class="confidence-badge confidence-${rec.confidence||'low'}">${rec.confidence||'low'}</span></div></div>
+  `;
+
+  // Warnings
+  const warn = document.getElementById('warningBanner');
+  const warnings = [rec.spread_warning, rec.liquidity_warning, st.supply_demand_note].filter(Boolean);
+  if(warnings.length) {
+    warn.classList.remove('hidden');
+    warn.innerHTML = warnings.map(w=>`<span>&#9888; ${w}</span>`).join('<br>');
+  } else { warn.classList.add('hidden'); }
+
+  // Assumptions
+  if(rec.assumptions) {
+    document.getElementById('assumptionsBody').innerHTML = `
+      <div>eBay + payment fees: <strong>${rec.assumptions.ebay_fees_pct}%</strong></div>
+      <div>Estimated shipping: <strong>$${rec.assumptions.shipping_cost.toFixed(2)}</strong></div>
+      <div>Target ROI: <strong>${rec.assumptions.target_roi_pct}%</strong></div>
+      <div>Net after fees: <strong>${fmt(rec.net_after_fees)}</strong></div>
+      <div>Sell price (median sold): <strong>${fmt(rec.estimated_sell_price)}</strong></div>`;
+  }
+
+  // Multi-platform tabs
+  const platforms = [
+    {key:'ebay_active', label:'eBay Active', items:l.ebay_active||[], sold:false, tag:''},
+    {key:'ebay_sold', label:'eBay Sold', items:l.ebay_sold||[], sold:true, tag:'sold-tag'},
+    {key:'facebook', label:'FB Marketplace', items:l.facebook||[], sold:false, tag:'fb-tag'},
+    {key:'poshmark', label:'Poshmark', items:l.poshmark||[], sold:false, tag:'posh-tag'},
+    {key:'mercari', label:'Mercari', items:l.mercari||[], sold:false, tag:'merc-tag'},
+  ];
+
+  const tabs = document.getElementById('platformTabs');
+  const panels = document.getElementById('platformPanels');
+  tabs.innerHTML = platforms.map((pl,i) =>
+    `<button class="platform-tab ${i===0?'active':''}" onclick="switchPlatform('${pl.key}')" data-platform="${pl.key}">${pl.label} <span class="count-badge">${pl.items.length}</span></button>`
+  ).join('');
+
+  panels.innerHTML = platforms.map((pl,i) => {
+    let noDataMsg = 'No listings found';
+    if (!pl.items.length) {
+      if (pl.key === 'facebook' && !apiStatus.fb_connected) noDataMsg = 'Facebook not connected — go to Settings to log in';
+      else if (pl.key.startsWith('ebay') && !apiStatus.ebay_configured && apiStatus.ebay_mode === 'api') noDataMsg = 'eBay API keys not configured — switch to Scrape or Auto mode in Settings';
+      else if (!pl.key.startsWith('ebay') && pl.key !== 'facebook') noDataMsg = 'No results (platform scraping may be blocked)';
+    }
+    const cards = pl.items.length ? pl.items.map(item => `
+      <a class="listing-card" href="${item.item_url}" target="_blank" rel="noopener">
+        <img src="${item.image_url||''}" alt="" loading="lazy" onerror="this.style.display='none'">
+        <div class="info">
+          <div class="title">${escHtml(item.title)}</div>
+          <div class="price-row">
+            <span class="price">${fmt(item.price)}</span>
+            <span class="source-badge ${pl.tag}">${pl.sold?'SOLD':item.source?.toUpperCase()||pl.label.toUpperCase()}</span>
+          </div>
+          ${item.condition?`<div class="condition-text">${escHtml(item.condition)}</div>`:''}
+        </div>
+      </a>`).join('') : `<div class="no-data">${noDataMsg}</div>`;
+    return `<div class="platform-panel ${i===0?'active':''}" data-platform="${pl.key}">
+      <div class="listings-grid">${cards}</div></div>`;
+  }).join('');
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function switchPlatform(key) {
+  document.querySelectorAll('.platform-tab').forEach(t=>t.classList.toggle('active',t.dataset.platform===key));
+  document.querySelectorAll('.platform-panel').forEach(p=>p.classList.toggle('active',p.dataset.platform===key));
+}
+
+// ── Listing Generator ──
+async function generateListing() {
+  if(!lastSearchData) return;
+  document.getElementById('listingModal').classList.add('visible');
+  document.getElementById('listingContent').innerHTML = '<div style="text-align:center;padding:32px"><div class="spinner"></div><p style="margin-top:12px;color:var(--text-dim)">AI is writing your listing...</p></div>';
+
+  try {
+    const fd = new FormData();
+    fd.append('identification', JSON.stringify(lastSearchData.identification));
+    fd.append('pricing_json', JSON.stringify(lastSearchData.pricing));
+    const r = await fetch('/api/listing/generate',{method:'POST',body:fd});
+    if(!r.ok) throw new Error((await r.json()).detail||'Generation failed');
+    const listing = await r.json();
+    renderListing(listing);
+  } catch(err) {
+    document.getElementById('listingContent').innerHTML = `<p style="color:var(--red)">Error: ${err.message}</p>`;
+  }
+}
+
+function renderListing(l) {
+  const keywords = (l.keywords||[]).map(k=>`<span class="keyword-tag">${escHtml(k)}</span>`).join('');
+  const specifics = Object.entries(l.item_specifics||{}).map(([k,v])=>`<div><strong>${escHtml(k)}:</strong> ${escHtml(v)}</div>`).join('');
+
+  document.getElementById('listingContent').innerHTML = `
+    <div class="listing-field"><label>Title</label><input value="${escHtml(l.title||'')}" readonly onclick="this.select()"></div>
+    ${l.subtitle?`<div class="listing-field"><label>Subtitle</label><input value="${escHtml(l.subtitle)}" readonly onclick="this.select()"></div>`:''}
+    <div class="listing-field"><label>Description</label><textarea readonly onclick="this.select()">${l.description||''}</textarea></div>
+    <div class="listing-field"><label>Condition</label><input value="${escHtml(l.condition||'')}" readonly></div>
+    <div class="listing-field"><label>Suggested Price</label><input value="${l.suggested_price?'$'+l.suggested_price:'—'}" readonly></div>
+    <div class="listing-field"><label>Strategy</label><input value="${escHtml(l.pricing_strategy||'')}" readonly></div>
+    <div class="listing-field"><label>Category</label><input value="${escHtml(l.category_suggestion||'')}" readonly></div>
+    ${specifics?`<div class="listing-field"><label>Item Specifics</label><div style="background:var(--bg);padding:10px 14px;border-radius:8px;border:1px solid var(--border);font-size:0.85rem;line-height:1.8">${specifics}</div></div>`:''}
+    ${l.shipping_notes?`<div class="listing-field"><label>Shipping</label><input value="${escHtml(l.shipping_notes)}" readonly></div>`:''}
+    <div class="listing-field"><label>Keywords</label><div class="listing-keywords">${keywords}</div></div>
+    <div style="margin-top:14px"><button class="copy-btn" onclick="copyListing()">Copy All to Clipboard</button></div>`;
+  window._lastListing = l;
+}
+
+function copyListing() {
+  const l = window._lastListing;
+  if(!l) return;
+  const specifics = Object.entries(l.item_specifics||{}).map(([k,v])=>`${k}: ${v}`).join('\n');
+  const text = `TITLE: ${l.title}\n${l.subtitle?'SUBTITLE: '+l.subtitle+'\n':''}CONDITION: ${l.condition}\nPRICE: $${l.suggested_price}\nSTRATEGY: ${l.pricing_strategy}\nCATEGORY: ${l.category_suggestion}\n\nDESCRIPTION:\n${l.description}\n\nITEM SPECIFICS:\n${specifics}\n\nKEYWORDS: ${(l.keywords||[]).join(', ')}\n\nSHIPPING: ${l.shipping_notes||''}`;
+  navigator.clipboard.writeText(text).then(()=>{ const btn=document.querySelector('.copy-btn'); btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy All to Clipboard',2000); });
+}
+
+function closeListingModal() { document.getElementById('listingModal').classList.remove('visible'); }
+
+// ── Inventory ──
+function addToInventory() {
+  if(!lastSearchData) return;
+  const id = lastSearchData.identification;
+  const rec = lastSearchData.pricing?.recommendation;
+  document.getElementById('editItemId').value = '';
+  document.getElementById('addFormTitle').textContent = 'Add to Inventory';
+  document.getElementById('inv-title').value = id.title||lastSearchData.search_query||'';
+  document.getElementById('inv-brand').value = id.brand||'';
+  document.getElementById('inv-category').value = id.category||'';
+  document.getElementById('inv-price').value = '';
+  document.getElementById('inv-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('inv-location').value = '';
+  document.getElementById('inv-storage').value = '';
+  document.getElementById('inv-status').value = 'unlisted';
+  document.getElementById('inv-listed-price').value = rec?.estimated_sell_price||'';
+  document.getElementById('inv-listed-platform').value = '';
+  document.getElementById('inv-sold-price').value = '';
+  document.getElementById('inv-shipping').value = '';
+  document.getElementById('inv-fees').value = '';
+  document.getElementById('inv-notes').value = '';
+  document.getElementById('addItemModal').classList.add('visible');
+}
+
+function showAddForm() {
+  document.getElementById('editItemId').value = '';
+  document.getElementById('addFormTitle').textContent = 'Add Item';
+  document.getElementById('invForm').reset();
+  document.getElementById('inv-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('addItemModal').classList.add('visible');
+}
+
+function closeAddForm() { document.getElementById('addItemModal').classList.remove('visible'); }
+
+async function saveInventoryItem(e) {
+  e.preventDefault();
+  const editId = document.getElementById('editItemId').value;
+  const body = {
+    title: document.getElementById('inv-title').value,
+    brand: document.getElementById('inv-brand').value||null,
+    category: document.getElementById('inv-category').value||null,
+    purchase_price: parseFloat(document.getElementById('inv-price').value)||null,
+    purchase_date: document.getElementById('inv-date').value||null,
+    purchase_location: document.getElementById('inv-location').value||null,
+    storage_location: document.getElementById('inv-storage').value||null,
+    status: document.getElementById('inv-status').value,
+    listed_price: parseFloat(document.getElementById('inv-listed-price').value)||null,
+    listed_platform: document.getElementById('inv-listed-platform').value||null,
+    sold_price: parseFloat(document.getElementById('inv-sold-price').value)||null,
+    shipping_cost: parseFloat(document.getElementById('inv-shipping').value)||null,
+    platform_fees: parseFloat(document.getElementById('inv-fees').value)||null,
+    notes: document.getElementById('inv-notes').value||null,
+    search_query: lastSearchData?.search_query||null,
+  };
+
+  const url = editId ? `/api/inventory/${editId}` : '/api/inventory';
+  const method = editId ? 'PUT' : 'POST';
+  const r = await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.ok) { closeAddForm(); loadInventory(); showPage('inventory'); }
+  else { alert('Failed to save'); }
+}
+
+async function loadInventory() {
+  const [items, dash] = await Promise.all([
+    fetch('/api/inventory'+(currentInvFilter?'?status='+currentInvFilter:'')).then(r=>r.json()),
+    fetch('/api/inventory/dashboard').then(r=>r.json()),
+  ]);
+
+  const dg = document.getElementById('dashboardGrid');
+  dg.innerHTML = `
+    <div class="dash-card"><div class="d-val">${dash.total_items}</div><div class="d-label">Total Items</div></div>
+    <div class="dash-card"><div class="d-val">${dash.unlisted}</div><div class="d-label">Unlisted</div></div>
+    <div class="dash-card"><div class="d-val">${dash.listed}</div><div class="d-label">Listed</div></div>
+    <div class="dash-card"><div class="d-val">${dash.sold}</div><div class="d-label">Sold</div></div>
+    <div class="dash-card"><div class="d-val">${fmt(dash.total_invested)}</div><div class="d-label">Invested</div></div>
+    <div class="dash-card"><div class="d-val">${fmt(dash.total_revenue)}</div><div class="d-label">Revenue</div></div>
+    <div class="dash-card ${dash.total_profit>=0?'profit-pos':'profit-neg'}"><div class="d-val">${fmt(dash.total_profit)}</div><div class="d-label">Profit</div></div>
+    <div class="dash-card"><div class="d-val">${dash.roi_percent}%</div><div class="d-label">ROI</div></div>
+  `;
+
+  const wrap = document.getElementById('invTableWrap');
+  if(!items.length) { wrap.innerHTML = '<div class="inv-empty">No items yet. Search for an item and add it, or click "+ Add Item" above.</div>'; return; }
+
+  wrap.innerHTML = `<table class="inv-table">
+    <thead><tr><th>Item</th><th>Paid</th><th>Status</th><th>Listed</th><th>Sold</th><th>Profit</th><th>Location</th><th></th></tr></thead>
+    <tbody>${items.map(i => {
+      const profit = i.status==='sold'&&i.sold_price&&i.purchase_price
+        ? (i.sold_price - i.purchase_price - (i.shipping_cost||0) - (i.platform_fees||0))
+        : null;
+      return `<tr>
+        <td><strong>${escHtml(i.title)}</strong>${i.brand?`<br><span style="font-size:0.75rem;color:var(--text-dim)">${escHtml(i.brand)}</span>`:''}</td>
+        <td>${fmt(i.purchase_price)}</td>
+        <td><span class="status-badge status-${i.status}">${i.status}</span></td>
+        <td>${fmt(i.listed_price)}</td>
+        <td>${fmt(i.sold_price)}</td>
+        <td style="color:${profit!==null?(profit>=0?'var(--green)':'var(--red)'):'var(--text-dim)'}">${profit!==null?fmt(profit):'—'}</td>
+        <td style="font-size:0.75rem;color:var(--text-dim)">${escHtml(i.storage_location||'')}</td>
+        <td><button class="btn-secondary btn-sm" style="padding:4px 10px;font-size:0.7rem" onclick="editItem('${i.id}')">Edit</button>
+            <button class="btn-secondary btn-sm btn-danger" style="padding:4px 10px;font-size:0.7rem" onclick="deleteItem('${i.id}')">Del</button></td>
+      </tr>`;}).join('')}</tbody></table>`;
+}
+
+function filterInventory(btn, status) {
+  currentInvFilter = status;
+  document.querySelectorAll('.inv-filter').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadInventory();
+}
+
+async function editItem(id) {
+  const r = await fetch('/api/inventory/'+id);
+  if(!r.ok) return;
+  const i = await r.json();
+  document.getElementById('editItemId').value = i.id;
+  document.getElementById('addFormTitle').textContent = 'Edit Item';
+  document.getElementById('inv-title').value = i.title||'';
+  document.getElementById('inv-brand').value = i.brand||'';
+  document.getElementById('inv-category').value = i.category||'';
+  document.getElementById('inv-price').value = i.purchase_price||'';
+  document.getElementById('inv-date').value = i.purchase_date||'';
+  document.getElementById('inv-location').value = i.purchase_location||'';
+  document.getElementById('inv-storage').value = i.storage_location||'';
+  document.getElementById('inv-status').value = i.status||'unlisted';
+  document.getElementById('inv-listed-price').value = i.listed_price||'';
+  document.getElementById('inv-listed-platform').value = i.listed_platform||'';
+  document.getElementById('inv-sold-price').value = i.sold_price||'';
+  document.getElementById('inv-shipping').value = i.shipping_cost||'';
+  document.getElementById('inv-fees').value = i.platform_fees||'';
+  document.getElementById('inv-notes').value = i.notes||'';
+  document.getElementById('addItemModal').classList.add('visible');
+}
+
+async function deleteItem(id) {
+  if(!confirm('Delete this item?')) return;
+  await fetch('/api/inventory/'+id,{method:'DELETE'});
+  loadInventory();
+}
+
+// ── Deals Page ──
+let currentOppFilter = '';
+let purchaseOppId = null;
+let dealsRefreshTimer = null;
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.top-nav button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.top-nav button[onclick="showPage('${page}')"]`).classList.add('active');
+  if (page === 'inventory') loadInventory();
+  if (page === 'deals') { loadDeals(); startDealsRefresh(); } else { stopDealsRefresh(); }
+  if (page === 'settings') loadSettings();
+}
+
+function startDealsRefresh() { if(!dealsRefreshTimer) dealsRefreshTimer = setInterval(loadDeals, 30000); }
+function stopDealsRefresh() { if(dealsRefreshTimer) { clearInterval(dealsRefreshTimer); dealsRefreshTimer = null; } }
+
+async function loadDeals() {
+  await Promise.all([loadScannerStatus(), loadWatches(), loadOpportunities()]);
+}
+
+async function loadScannerStatus() {
+  try {
+    const r = await fetch('/api/scanner/status');
+    const s = await r.json();
+    const dot = document.getElementById('scannerDot');
+    const label = document.getElementById('scannerLabel');
+    const meta = document.getElementById('scannerMeta');
+    const btn = document.getElementById('scanToggleBtn');
+    if (s.running) {
+      dot.className = 'scanner-dot on';
+      label.textContent = 'Scanner running';
+      btn.textContent = 'Stop';
+    } else {
+      dot.className = 'scanner-dot off';
+      label.textContent = 'Scanner stopped';
+      btn.textContent = 'Start';
+    }
+    const parts = [];
+    if (!apiStatus.ebay_configured) {
+      parts.push('⚠ eBay API keys required for scanning');
+      meta.style.color = '#e67e22';
+    } else {
+      meta.style.color = '';
+    }
+    if (s.active_watches) parts.push(s.active_watches + ' watches');
+    if (s.new_opportunities) parts.push(s.new_opportunities + ' new deals');
+    if (s.last_scan) parts.push('Last scan: ' + timeAgo(s.last_scan));
+    meta.textContent = parts.join(' · ');
+  } catch(e) {}
+}
+
+async function toggleScanner() {
+  const btn = document.getElementById('scanToggleBtn');
+  const action = btn.textContent === 'Start' ? 'start' : 'stop';
+  await fetch('/api/scanner/' + action, {method:'POST'});
+  await loadScannerStatus();
+}
+
+async function scanNow() {
+  await fetch('/api/scanner/scan-now', {method:'POST'});
+  setTimeout(loadDeals, 2000);
+}
+
+async function loadWatches() {
+  try {
+    const r = await fetch('/api/watch');
+    const watches = await r.json();
+    const list = document.getElementById('watchList');
+    if (!watches.length) {
+      list.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem;padding:12px">No watch queries yet. Add one above to start scanning for deals.</div>';
+      return;
+    }
+    list.innerHTML = watches.map(w => `
+      <div class="watch-item">
+        <div>
+          <div class="wi-query">${escHtml(w.query)}</div>
+          <div class="wi-meta">
+            ${w.max_buy_price ? 'Max $'+w.max_buy_price : ''}
+            ${w.min_profit ? ' · Min profit $'+w.min_profit : ''}
+            ${w.scan_count ? ' · '+w.scan_count+' scans' : ''}
+            ${w.opportunities_found ? ' · '+w.opportunities_found+' found' : ''}
+            ${w.last_scanned ? ' · Last: '+timeAgo(w.last_scanned) : ''}
+          </div>
+        </div>
+        <div class="wi-actions">
+          <button class="watch-toggle ${w.enabled?'on':'off'}" onclick="toggleWatch('${w.id}',${!w.enabled})"></button>
+          <button class="btn-secondary btn-sm btn-danger" style="padding:4px 10px;font-size:0.7rem" onclick="deleteWatch('${w.id}')">Del</button>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+async function addWatch() {
+  const query = document.getElementById('watchQueryInput').value.trim();
+  if (!query) return;
+  const maxPrice = parseFloat(document.getElementById('watchMaxPrice').value) || null;
+  const minProfit = parseFloat(document.getElementById('watchMinProfit').value) || 5.0;
+  await fetch('/api/watch', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({query, max_buy_price: maxPrice, min_profit: minProfit}),
+  });
+  document.getElementById('watchQueryInput').value = '';
+  document.getElementById('watchMaxPrice').value = '';
+  loadWatches();
+}
+
+async function toggleWatch(id, enabled) {
+  await fetch('/api/watch/'+id, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({enabled}),
+  });
+  loadWatches();
+}
+
+async function deleteWatch(id) {
+  if(!confirm('Delete this watch query and its opportunities?')) return;
+  await fetch('/api/watch/'+id, {method:'DELETE'});
+  loadDeals();
+}
+
+async function loadOpportunities() {
+  try {
+    const params = new URLSearchParams();
+    if (currentOppFilter) params.set('status', currentOppFilter);
+    params.set('sort_by', 'deal_score');
+    params.set('order', 'desc');
+    const r = await fetch('/api/opportunities?' + params);
+    const opps = await r.json();
+    document.getElementById('oppCount').textContent = opps.length;
+    const feed = document.getElementById('oppFeed');
+    if (!opps.length) {
+      feed.innerHTML = '<div class="opp-empty">No opportunities found yet. Add watch queries and the scanner will find deals for you.</div>';
+      return;
+    }
+    feed.innerHTML = opps.map(o => {
+      const vc = verdictClass(o.deal_verdict);
+      return `<div class="opp-card">
+        <img src="${o.image_url||''}" alt="" onerror="this.style.display='none'">
+        <div class="opp-info">
+          <div class="opp-title">${escHtml(o.title)}</div>
+          <div style="margin:4px 0">
+            <span class="opp-verdict-sm ${vc}">${escHtml(o.deal_verdict||'')}</span>
+            <span style="font-size:0.75rem;color:var(--text-dim);margin-left:6px">Score: ${o.deal_score||0}</span>
+          </div>
+          <div class="opp-prices">
+            <div><div class="op-label">Price</div><div class="op-val" style="color:var(--accent-light)">${fmt(o.current_price)}</div></div>
+            <div><div class="op-label">Sells For</div><div class="op-val">${fmt(o.estimated_sell_price)}</div></div>
+            <div><div class="op-label">Profit</div><div class="op-val" style="color:var(--green)">${fmt(o.estimated_profit)}</div></div>
+          </div>
+          <div class="opp-actions">
+            ${o.status==='new'||o.status==='viewed' ? `
+              <a href="${o.item_url}" target="_blank" class="btn-primary btn-sm" style="text-decoration:none;display:inline-block">Buy on eBay</a>
+              <button class="btn-secondary btn-sm" onclick="openPurchaseModal('${o.id}','${escHtml(o.title).replace(/'/g,"\\'")}',${o.current_price||0})">I Bought This</button>
+              <button class="btn-secondary btn-sm btn-danger" style="padding:4px 10px;font-size:0.7rem" onclick="dismissOpp('${o.id}')">Dismiss</button>
+            ` : `<span class="status-badge status-${o.status==='purchased'?'sold':'unlisted'}">${o.status}</span>`}
+          </div>
+          <div class="opp-time">${o.found_at ? timeAgo(o.found_at) : ''} ${o.condition ? ' · '+escHtml(o.condition) : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+function filterOpps(btn, status) {
+  currentOppFilter = status;
+  document.querySelectorAll('#page-deals .inv-filter').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadOpportunities();
+}
+
+function verdictClass(v) {
+  if(!v) return '';
+  const l = v.toLowerCase();
+  if(l.includes('hot')) return 'verdict-hot';
+  if(l.includes('good')) return 'verdict-good';
+  if(l.includes('okay')) return 'verdict-okay';
+  return 'verdict-pass';
+}
+
+function timeAgo(iso) {
+  if(!iso) return '';
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if(diff < 60) return 'just now';
+  if(diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function openPurchaseModal(oppId, title, price) {
+  purchaseOppId = oppId;
+  document.getElementById('purchaseItemTitle').textContent = title;
+  document.getElementById('purchasePrice').value = price || '';
+  document.getElementById('purchaseSource').value = 'eBay Flip';
+  document.getElementById('purchaseResult').innerHTML = '';
+  document.getElementById('purchaseModal').classList.add('visible');
+}
+
+function closePurchaseModal() {
+  document.getElementById('purchaseModal').classList.remove('visible');
+  purchaseOppId = null;
+}
+
+async function confirmPurchase() {
+  if(!purchaseOppId) return;
+  const price = parseFloat(document.getElementById('purchasePrice').value);
+  const source = document.getElementById('purchaseSource').value || 'eBay Flip';
+  if(!price || price <= 0) { alert('Enter a purchase price'); return; }
+
+  const resultDiv = document.getElementById('purchaseResult');
+  resultDiv.innerHTML = '<div style="text-align:center"><div class="spinner"></div><p style="margin-top:8px;color:var(--text-dim);font-size:0.85rem">Processing purchase &amp; generating listing...</p></div>';
+
+  try {
+    const r = await fetch('/api/opportunities/' + purchaseOppId + '/purchase', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({purchase_price: price, purchase_location: source}),
+    });
+    if(!r.ok) throw new Error((await r.json()).detail || 'Purchase failed');
+    const result = await r.json();
+
+    let html = '<div style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">';
+    html += '<div style="color:var(--green);font-weight:700;margin-bottom:8px">Added to inventory!</div>';
+    if(result.published && result.ebay_listing_url) {
+      html += `<div style="margin-bottom:8px">Auto-listed on eBay: <a href="${result.ebay_listing_url}" target="_blank">View Listing</a></div>`;
+    }
+    if(result.listing) {
+      html += `<div style="font-size:0.85rem;margin-bottom:8px"><strong>Generated listing:</strong> ${escHtml(result.listing.title||'')}</div>`;
+      if(result.listing.suggested_price) html += `<div style="font-size:0.85rem">Suggested price: <strong>$${result.listing.suggested_price}</strong></div>`;
+      html += `<button class="copy-btn" style="margin-top:8px" onclick='window._lastListing=${JSON.stringify(result.listing).replace(/'/g,"&#39;")};copyListing()'>Copy Listing</button>`;
+    }
+    html += '</div>';
+    resultDiv.innerHTML = html;
+    loadOpportunities();
+  } catch(err) {
+    resultDiv.innerHTML = `<p style="color:var(--red)">Error: ${err.message}</p>`;
+  }
+}
+
+async function dismissOpp(id) {
+  await fetch('/api/opportunities/' + id + '/dismiss', {method:'POST'});
+  loadOpportunities();
+}
+
+// ── Settings Page ──────────────────────────────────────────────
+
+async function loadSettings() {
+  try {
+    const r = await fetch('/api/status');
+    const status = await r.json();
+    apiStatus = status;
+    const s = status.settings || {};
+
+    // eBay mode toggle
+    document.querySelectorAll('#ebayModeGroup .stoggle').forEach(b => {
+      b.classList.toggle('active', b.dataset.val === (s.ebay_mode || 'auto'));
+    });
+    const hint = s.ebay_mode === 'scrape' ? 'Scraping eBay search pages directly (no API key needed)'
+      : s.ebay_mode === 'api' ? (status.ebay_configured ? 'Using eBay API (keys configured)' : '⚠ API mode selected but keys not set — searches will fail')
+      : status.ebay_configured ? 'Using eBay API (keys detected)' : 'No API keys — will scrape eBay directly';
+    document.getElementById('ebayModeHint').textContent = hint;
+
+    // FB status
+    const fbDot = document.getElementById('fbStatusDot');
+    const fbLabel = document.getElementById('fbStatusLabel');
+    const fbConnBtn = document.getElementById('fbConnectBtn');
+    const fbDiscBtn = document.getElementById('fbDisconnectBtn');
+    const fbHint = document.getElementById('fbHint');
+    if (status.fb_connected) {
+      fbDot.className = 'scanner-dot on';
+      fbLabel.textContent = 'Connected';
+      fbConnBtn.style.display = 'none';
+      fbDiscBtn.style.display = '';
+      fbHint.textContent = 'Facebook Marketplace will appear as a search platform';
+    } else {
+      fbDot.className = 'scanner-dot off';
+      fbLabel.textContent = 'Not connected';
+      fbConnBtn.style.display = '';
+      fbDiscBtn.style.display = 'none';
+      fbHint.textContent = 'Click Connect to open a browser and log into Facebook once';
+    }
+
+    // API keys grid
+    document.getElementById('apiKeysGrid').innerHTML = [
+      {label: 'Network (eBay reachable)', ok: status.network_ok},
+      {label: 'eBay API keys', ok: status.ebay_configured},
+      {label: 'OpenAI API key', ok: status.openai_configured},
+      {label: 'FB Marketplace', ok: status.fb_connected},
+      {label: 'eBay Seller (OAuth)', ok: status.seller_access},
+    ].map(k =>
+      `<div class="api-status-item"><span class="api-dot ${k.ok?'on':'off'}"></span>${k.label}</div>`
+    ).join('');
+    if (!status.network_ok) {
+      document.getElementById('apiKeysGrid').innerHTML += '<div style="grid-column:1/-1;font-size:0.82rem;color:var(--red);margin-top:4px;">⚠ Cannot reach eBay. If running from Cursor, start the server from a regular Terminal instead.</div>';
+    }
+  } catch(e) {}
+}
+
+async function setEbayMode(mode) {
+  await fetch('/api/settings', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ebay_mode: mode}),
+  });
+  loadSettings();
+}
+
+async function fbConnect() {
+  const btn = document.getElementById('fbConnectBtn');
+  btn.textContent = 'Opening browser...';
+  btn.disabled = true;
+  document.getElementById('fbHint').textContent = 'A browser window will open — log into Facebook, then close the window when done.';
+  try {
+    const r = await fetch('/api/fb/connect', {method:'POST'});
+    const result = await r.json();
+    if (result.status === 'error') {
+      document.getElementById('fbHint').textContent = 'Error: ' + (result.message || 'Could not open browser');
+    }
+  } catch(e) {
+    document.getElementById('fbHint').textContent = 'Error connecting';
+  }
+  btn.textContent = 'Connect Facebook';
+  btn.disabled = false;
+  loadSettings();
+}
+
+async function fbDisconnect() {
+  await fetch('/api/fb/disconnect', {method:'POST'});
+  loadSettings();
+}
+</script>
+</body>
+</html>
